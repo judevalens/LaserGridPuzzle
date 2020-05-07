@@ -10,12 +10,15 @@ import (
 const DEBUG bool = true
 
 func main() {
-	var c *Cell = NewCell(1,2,Laser)
-	c.adjacentLaser = 10
-	fmt.Printf("The cell %v is at %v , %v \n", c.element, c.row, c.adjacentLaser)
+	var c *Config = NewConfig(os.Args[1])
+
+	fmt.Printf("The cell %v is at %v\n", c.currentRow, c.currentCol)
+
 	readInput()
 
 }
+
+
 
 func readInput() {
 	scanner := bufio.NewScanner(os.Stdin)
