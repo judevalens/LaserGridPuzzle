@@ -7,10 +7,12 @@ import (
 	"strings"
 )
 
+const DEBUG bool = true
+
 func main() {
 	var c *Cell = NewCell(1,2,Laser)
 	c.adjacentLaser = 10
-	fmt.Printf("The cell %v is at %v , %v \n", c.Element, c.row, c.adjacentLaser)
+	fmt.Printf("The cell %v is at %v , %v \n", c.element, c.row, c.adjacentLaser)
 	readInput()
 
 }
@@ -49,4 +51,10 @@ func exec(commands []string) {
 
 	}
 
+}
+
+func debug(s string)  {
+	if DEBUG {
+		fmt.Println(s)
+	}
 }
