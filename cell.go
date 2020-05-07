@@ -78,7 +78,7 @@ func (c *Cell) updateElement(e CellType) bool {
 	return r
 }
 
-func (c *Cell) propagate(e CellType, laser Cell, action int) bool {
+func (c *Cell) propagate(e CellType, laser *Cell, action int) bool {
 
 	r := false
 	// when its a free spot or beam/ we add the new laser dependency and change the

@@ -24,8 +24,11 @@ func readInput() {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	text := ""
+	fmt.Println("")
 
 	for text != "stop" {
+		fmt.Printf("> ")
+
 		scanner.Scan()
 		text = scanner.Text()
 		commands := strings.Split(text, " ")
@@ -54,6 +57,17 @@ func exec(commands []string) {
 
 	}
 
+}
+
+func update(response ResponseData)  {
+	if response.action == DisplayStatus{
+		fmt.Printf("%s",response.statusMsg)
+		response.config.printMatrix()
+	}else if response.action == Display {
+		response.config.printMatrix()
+	}
+
+	readInput()
 }
 
 func debug(s string)  {
