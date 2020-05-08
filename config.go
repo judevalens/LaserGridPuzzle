@@ -15,9 +15,23 @@ import (
 	"strings"
 )
 
+type Action int
+
+const (
+	Display       Action = 1
+	DisplayStatus   Action    = 2
+	Solving  Action = 3
+)
+
+type ResponseData struct {
+	statusMsg string
+	action    Action
+	config    *Config
+}
+
 type Config struct {
 	matrix       [][]*Cell
-	pillarSet    []Cell
+	pillarSet    []*Cell
 	isPillarOk   bool
 	currentRow   int
 	currentCol   int
@@ -28,14 +42,44 @@ type Config struct {
 
 func NewConfig(path string) *Config {
 	config := new(Config)
-
 	config.currentCol = 0
 	config.currentRow = 0
 	config.successorCol = 0
 	config.successorRow = 0
+	config.isPillarOk = true
 	config.createGrid(path)
-
+	config.pillarSet = make([]*Cell, 0)
 	return config
+}
+
+func (config *Config) copyConfig() *Config {
+	newConfig := new(Config)
+
+	newConfig.matrix = make([][]*Cell, len(config.matrix))
+
+	for r, _ := range newConfig.matrix {
+		newConfig.matrix[r] = make([]*Cell, len(config.matrix[0]))
+	}
+
+	newConfig.currentCol = config.currentCol
+	newConfig.currentRow = config.currentRow
+	newConfig.isPillarOk = config.isPillarOk
+
+	newConfig.successorCol = config.currentCol + 1
+	newConfig.successorRow = config.currentRow
+	if newConfig.successorCol >= len(newConfig.matrix[0]) {
+		debug("SWITCHING ROW")
+		newConfig.successorRow++
+	}
+	newConfig.successorRow = newConfig.successorRow % len(newConfig.matrix[0])
+
+	for r, rv := range newConfig.matrix {
+		for c, rc := range rv {
+			rc = config.matrix[r][c]
+			_ = rc
+		}
+	}
+	return newConfig
 }
 
 func (config *Config) printMatrix() {
@@ -118,7 +162,7 @@ func (config *Config) createGrid(path string) {
 }
 
 /**
- * adds lazer at the given coordinates
+ * adds a laser at the given coordinates
  *
  * @param row
  * @param col
@@ -147,15 +191,39 @@ func (config *Config) addLaser(row int, col int) {
 
 	data := ResponseData{
 		statusMsg: response,
-		action: DisplayStatus,
-		config: config,
+		action:    DisplayStatus,
+		config:    config,
 	}
 
 	update(data)
 }
 
 /**
- * adds laser at the given coordinates
+ * adds a laser at the given coordinates
+ * same as addLaser but its suited to use in the backtracker
+ * @param row
+ * @param col
+ */
+func (config *Config) addLaserB(row int, col int) bool {
+
+	var isCorrect bool
+
+	if row < 0 || row > len(config.matrix) || col < 0 || col > len(config.matrix[0]) {
+		isCorrect = false
+	} else {
+		isCorrect = config.matrix[row][col].updateElement(Laser)
+
+		if isCorrect {
+			config.beamRow(row, col, 0, 1, config.matrix[row][col])
+			config.beamCol(row, col, 0, 1, config.matrix[row][col])
+		}
+
+	}
+	return isCorrect
+}
+
+/**
+ * removes laser at the given coordinates
  *
  * @param row
  * @param col
@@ -184,19 +252,16 @@ func (config *Config) removeLaser(row int, col int) {
 
 	data := ResponseData{
 		statusMsg: response,
-		action: DisplayStatus,
-		config: config,
+		action:    DisplayStatus,
+		config:    config,
 	}
 
 	update(data)
 }
 
-
-
-func (config *Config) verify(){
+func (config *Config) verify() {
 
 }
-
 
 /**
  * when a laser is added this method adds beam on the cells that Vertically
@@ -254,18 +319,40 @@ func (config *Config) beamCol(row int, col int, direction int, action int, laser
 	}
 }
 
+func (config *Config) getSuccessor() [2]*Config {
 
-type Action int
+	var successors [2]*Config
 
-const (
-	Display       Action = 1
-	DisplayStatus        = 2
-	Solving
-)
+	if config.successorRow < len(config.matrix) {
+		for _, pillar := range config.pillarSet {
+			cell := config.matrix[pillar.row][pillar.col]
 
-type ResponseData struct {
-	statusMsg string
-	action Action
-	config *Config
+			if (config.successorRow - cell.row) > 1 {
+				if cell.adjacentPillar != cell.pillarNumber {
+					config.isPillarOk = false
+					break
+				}
+			}
+
+			configA := config.copyConfig()
+			configB := config.copyConfig()
+
+			result := configB.addLaserB(configB.currentRow, configB.currentCol)
+
+			if result {
+				successors[0] = configB
+			}
+
+			successors[1] = configA
+		}
+	}
+
+	return successors
 
 }
+
+
+func (config *Config)solve() {
+
+}
+

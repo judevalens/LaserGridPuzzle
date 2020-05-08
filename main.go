@@ -20,7 +20,6 @@ func main() {
 }
 
 
-
 func readInput() {
 	scanner := bufio.NewScanner(os.Stdin)
 
