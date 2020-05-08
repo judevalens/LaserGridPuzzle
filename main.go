@@ -4,15 +4,16 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
 const DEBUG bool = true
-
+var safeConfig *Config
 func main() {
-	var c *Config = NewConfig(os.Args[1])
+	safeConfig = NewConfig(os.Args[1])
 
-	fmt.Printf("The cell %v is at %v\n", c.currentRow, c.currentCol)
+	fmt.Printf("The cell %v is at %v\n", safeConfig.currentRow, safeConfig.currentCol)
 
 	readInput()
 
@@ -26,7 +27,6 @@ func readInput() {
 	text := ""
 	fmt.Println("")
 
-	for text != "stop" {
 		fmt.Printf("> ")
 
 		scanner.Scan()
@@ -35,7 +35,6 @@ func readInput() {
 		exec(commands)
 		fmt.Printf("%s\n------\n", text)
 
-	}
 }
 
 func exec(commands []string) {
@@ -55,6 +54,23 @@ func exec(commands []string) {
 
 	if isCommandValid {
 
+		switch command {
+		case "a":
+			r, _ := strconv.Atoi(commands[1])
+			c, _ := strconv.Atoi(commands[2])
+			safeConfig.addLaser(r,c)
+		case "r":
+			r, _ := strconv.Atoi(commands[1])
+			c, _ := strconv.Atoi(commands[2])
+			safeConfig.removeLaser(r,c)
+		case "c":
+			safeConfig.verify()
+		case "d":
+			safeConfig.printMatrix()
+			readInput()
+		case "q":
+			os.Exit(0)
+		}
 	}
 
 }
@@ -64,7 +80,7 @@ func update(response ResponseData)  {
 		fmt.Printf("%s",response.statusMsg)
 		response.config.printMatrix()
 	}else if response.action == Display {
-		response.config.printMatrix()
+		safeConfig.printMatrix()
 	}
 
 	readInput()

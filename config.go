@@ -127,56 +127,22 @@ func (config *Config) addLaser(row int, col int) {
 
 	var response string
 	var status bool
-	config.matrix[row][col].failedVerification = true
 
 	if row < 0 || row > len(config.matrix) || col < 0 || col > len(config.matrix[0]) {
 		status = false
 	} else {
+		config.matrix[row][col].failedVerification = false
+
 		status = config.matrix[row][col].updateElement(Laser)
 	}
 
 	if status {
-		response = "Laser added at: (" + string(row) + ", " + string(col) + ")"
+		response = "Laser added at: (" + strconv.Itoa(row) + ", " + strconv.Itoa(col) + ")"
 		config.beamRow(row, col, 0, 1, config.matrix[row][col])
 		config.beamCol(row, col, 0, 1, config.matrix[row][col])
 		//lastConfigStack.add(safeMatrixC[row][col])
 	} else {
-		response = "Error adding laser at: (" + string(row) + ", " + string(col) + ")"
-	}
-
-	data := ResponseData{
-		statusMsg: response,
-		action: DisplayStatus,
-	}
-
-	update(config, data)
-}
-
-/**
- * adds laser at the given coordinates
- *
- * @param row
- * @param col
- */
-func (config *Config) removeLaser(row int, col int) {
-
-	var response string
-	var status bool
-	config.matrix[row][col].failedVerification = true
-
-	if row < 0 || row > len(config.matrix) || col < 0 || col > len(config.matrix[0]) {
-		status = false
-	} else {
-		status = config.matrix[row][col].updateElement(FreeSpot)
-	}
-
-	if status {
-		response = "Laser removed at: (" + string(row) + ", " + string(col) + ")"
-		config.beamRow(row, col, 0, -1, config.matrix[row][col])
-		config.beamCol(row, col, 0, -1, config.matrix[row][col])
-		//lastConfigStack.add(safeMatrixC[row][col])
-	} else {
-		response = "Error removing laser at: (" + string(row) + ", " + string(col) + ")"
+		response = "Error adding laser at: (" + strconv.Itoa(row) + ", " + strconv.Itoa(col) + ")"
 	}
 
 	data := ResponseData{
@@ -189,6 +155,50 @@ func (config *Config) removeLaser(row int, col int) {
 }
 
 /**
+ * adds laser at the given coordinates
+ *
+ * @param row
+ * @param col
+ */
+func (config *Config) removeLaser(row int, col int) {
+
+	var response string
+	var status bool
+
+	if row < 0 || row > len(config.matrix) || col < 0 || col > len(config.matrix[0]) {
+		status = false
+	} else {
+		config.matrix[row][col].failedVerification = false
+
+		status = config.matrix[row][col].updateElement(FreeSpot)
+	}
+
+	if status {
+		response = "Laser removed at: (" + strconv.Itoa(row) + ", " + strconv.Itoa(col) + ")"
+		config.beamRow(row, col, 0, -1, config.matrix[row][col])
+		config.beamCol(row, col, 0, -1, config.matrix[row][col])
+		//lastConfigStack.add(safeMatrixC[row][col])
+	} else {
+		response = "Error removing laser at: (" + strconv.Itoa(row) + ", " + strconv.Itoa(col) + ")"
+	}
+
+	data := ResponseData{
+		statusMsg: response,
+		action: DisplayStatus,
+		config: config,
+	}
+
+	update(data)
+}
+
+
+
+func (config *Config) verify(){
+
+}
+
+
+/**
  * when a laser is added this method adds beam on the cells that Vertically
  * adjacent to the laser It stops when a pillar is encountered
  *
@@ -199,7 +209,7 @@ func (config *Config) removeLaser(row int, col int) {
  * @param laser     the laser that emits those beams
  */
 func (config *Config) beamRow(row int, col int, direction int, action int, laser *Cell) {
-	if row >= 0 && row < len(config.matrix) {
+	if row >= 0 && row < len(config.matrix[0]) {
 		var status bool
 		if direction == 0 {
 			config.beamRow(row+1, col, 1, action, laser)
@@ -227,7 +237,7 @@ func (config *Config) beamRow(row int, col int, direction int, action int, laser
  * @param laser     the laser that emits those beams
  */
 func (config *Config) beamCol(row int, col int, direction int, action int, laser *Cell) {
-	if row >= 0 && row < len(config.matrix) {
+	if col >= 0 && col < len(config.matrix[0]) {
 		var status bool
 		if direction == 0 {
 			config.beamCol(row, col+1, 1, action, laser)

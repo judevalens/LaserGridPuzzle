@@ -3,8 +3,8 @@ package main
 import (
 	"container/list"
 	"math"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 /*
@@ -21,27 +21,27 @@ const (
 )
 
 type Cell struct {
-	row                int
-	col                int
-	element            CellType
-	adjacentLaser      int
-	adjacentPillar     int
-	failedVerification bool
-	laserDependency    []Cell
+	row                 int
+	col                 int
+	element             CellType
+	adjacentLaser       int
+	adjacentPillar      int
+	failedVerification  bool
+	laserDependency     []Cell
 	laserDependencyList list.List
-	pillarNumber       int
+	pillarNumber        int
 }
 
 func NewCell(row int, col int, element CellType) *Cell {
 	var cell *Cell = new(Cell)
-	cell.row  = row
-	cell.col =  col
+	cell.row = row
+	cell.col = col
 	cell.element = element
-	if strings.Contains(string(Pillars),string(element)){
+	if strings.Contains(string(Pillars), string(element)) {
 		if string(element) != "X" {
-			n, _ := strconv.ParseInt(string(Pillars),10,16)
+			n, _ := strconv.ParseInt(string(Pillars), 10, 16)
 			cell.pillarNumber = int(n)
-		}else {
+		} else {
 			cell.pillarNumber = -1
 		}
 	}
@@ -90,17 +90,17 @@ func (c *Cell) propagate(e CellType, laser *Cell, action int) bool {
 
 		if c.element == FreeSpot || c.element == Beam {
 			c.element = e
-			c.laserDependency = append(c.laserDependency, laser)
+			c.laserDependency = append(c.laserDependency, *laser)
 			r = true
 		} else if c.element == Laser {
 			laser.adjacentLaser = laser.adjacentLaser + 1
-			c.laserDependency =append(c.laserDependency,laser)
+			c.laserDependency = append(c.laserDependency, *laser)
 
 			debug("ADJ LASER at " + string(c.row) + " " + string(c.col) + " LASER: " + string(laser.row) + " " + string(laser.
 				col) + " #" + string(laser.adjacentLaser))
 			c.adjacentLaser++
 			r = true
-		} else if strings.Contains(string(Pillars),string(e)) {
+		} else if strings.Contains(string(Pillars), string(e)) {
 
 			lDistance := math.Abs(float64(c.row - laser.row))
 			hDistance := math.Abs(float64(c.col - laser.col))
@@ -126,7 +126,7 @@ func (c *Cell) propagate(e CellType, laser *Cell, action int) bool {
 			laser.adjacentLaser--
 			c.adjacentLaser--
 			r = true
-		} else if strings.Contains(string(Pillars),string(c.element)) {
+		} else if strings.Contains(string(Pillars), string(c.element)) {
 
 			lDistance := math.Abs(float64(c.row - laser.row))
 			hDistance := math.Abs(float64(c.col - laser.col))
