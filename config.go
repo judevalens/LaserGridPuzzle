@@ -13,14 +13,15 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Action int
 
 const (
 	Display       Action = 1
-	DisplayStatus   Action    = 2
-	Solving  Action = 3
+	DisplayStatus Action = 2
+	Solving       Action = 3
 )
 
 type ResponseData struct {
@@ -29,8 +30,12 @@ type ResponseData struct {
 	config    *Config
 }
 
+var solutionFound bool = false
+var stackCount int
+
 type Config struct {
 	matrix       [][]*Cell
+	backTrackingConfig		*Config
 	pillarSet    []*Cell
 	isPillarOk   bool
 	currentRow   int
@@ -38,6 +43,7 @@ type Config struct {
 	successorRow int
 	successorCol int
 	path         []Config
+	isSolutionFound bool
 }
 
 func NewConfig(path string) *Config {
@@ -48,7 +54,7 @@ func NewConfig(path string) *Config {
 	config.successorRow = 0
 	config.isPillarOk = true
 	config.createGrid(path)
-	config.pillarSet = make([]*Cell, 0)
+	//config.backTrackingConfig = config.copyConfig()
 	return config
 }
 
@@ -61,21 +67,28 @@ func (config *Config) copyConfig() *Config {
 		newConfig.matrix[r] = make([]*Cell, len(config.matrix[0]))
 	}
 
-	newConfig.currentCol = config.currentCol
-	newConfig.currentRow = config.currentRow
+	newConfig.currentCol = config.successorCol
+	newConfig.currentRow = config.successorRow
 	newConfig.isPillarOk = config.isPillarOk
+	newConfig.pillarSet = config.pillarSet
 
-	newConfig.successorCol = config.currentCol + 1
-	newConfig.successorRow = config.currentRow
+	debug(strconv.FormatBool(newConfig.isPillarOk))
+
+	newConfig.successorCol = newConfig.currentCol + 1
+	newConfig.successorRow = newConfig.currentRow
 	if newConfig.successorCol >= len(newConfig.matrix[0]) {
 		debug("SWITCHING ROW")
 		newConfig.successorRow++
 	}
-	newConfig.successorRow = newConfig.successorRow % len(newConfig.matrix[0])
+	newConfig.successorCol = newConfig.successorCol % len(newConfig.matrix[0])
 
+	debug("Current row " + strconv.Itoa(newConfig.currentRow))
+	debug("Current col " + strconv.Itoa(newConfig.currentCol))
+	debug("Succ row " + strconv.Itoa(newConfig.successorRow))
+	debug("Succ col " + strconv.Itoa(newConfig.successorCol))
 	for r, rv := range newConfig.matrix {
 		for c, rc := range rv {
-			rc = config.matrix[r][c]
+			newConfig.matrix[r][c] = config.matrix[r][c].CopyCell()
 			_ = rc
 		}
 	}
@@ -142,6 +155,8 @@ func (config *Config) createGrid(path string) {
 	row, _ = strconv.Atoi(size[0])
 	col, _ = strconv.Atoi(size[1])
 
+	config.pillarSet = make([]*Cell, 0)
+
 	config.matrix = make([][]*Cell, row)
 
 	for y, _ := range config.matrix {
@@ -154,6 +169,12 @@ func (config *Config) createGrid(path string) {
 		c2 := 0
 		for c := 0; c < col+col-1; c += 2 {
 			config.matrix[r][c2] = NewCell(r, c2, CellType(lineSt[c:c+1]))
+			if strings.Contains(string(Pillars),string(config.matrix[r][c2].element)){
+				if string(config.matrix[r][c2].element) != "X"{
+					config.pillarSet = append(config.pillarSet,config.matrix[r][c2])
+
+				}
+			}
 			c2++
 		}
 	}
@@ -216,7 +237,10 @@ func (config *Config) addLaserB(row int, col int) bool {
 		if isCorrect {
 			config.beamRow(row, col, 0, 1, config.matrix[row][col])
 			config.beamCol(row, col, 0, 1, config.matrix[row][col])
+			debug("IS CORRECT")
+
 		}
+
 
 	}
 	return isCorrect
@@ -274,7 +298,7 @@ func (config *Config) verify() {
  * @param laser     the laser that emits those beams
  */
 func (config *Config) beamRow(row int, col int, direction int, action int, laser *Cell) {
-	if row >= 0 && row < len(config.matrix[0]) {
+	if row >= 0 && row < len(config.matrix) {
 		var status bool
 		if direction == 0 {
 			config.beamRow(row+1, col, 1, action, laser)
@@ -319,32 +343,39 @@ func (config *Config) beamCol(row int, col int, direction int, action int, laser
 	}
 }
 
-func (config *Config) getSuccessor() [2]*Config {
+func (config *Config) getSuccessor() []*Config {
 
-	var successors [2]*Config
+	var successors []*Config
 
 	if config.successorRow < len(config.matrix) {
+
 		for _, pillar := range config.pillarSet {
 			cell := config.matrix[pillar.row][pillar.col]
 
 			if (config.successorRow - cell.row) > 1 {
 				if cell.adjacentPillar != cell.pillarNumber {
+					//fmt.Printf("INVALID  cell.adjacentPillar %v  cell.pillarNumber %v\n", cell.adjacentPillar,cell.pillarNumber)
 					config.isPillarOk = false
 					break
 				}
 			}
+			config.isPillarOk = true
+		}
 
 			configA := config.copyConfig()
 			configB := config.copyConfig()
-
 			result := configB.addLaserB(configB.currentRow, configB.currentCol)
+			debug("RESULT  " + strconv.FormatBool(result))
 
 			if result {
-				successors[0] = configB
+				debug("aDDED LASER")
+				successors = append(successors,configB)
 			}
 
-			successors[1] = configA
-		}
+		successors = append(successors,configA)
+
+	}else{
+		debug("FAILED 2")
 	}
 
 	return successors
@@ -352,7 +383,120 @@ func (config *Config) getSuccessor() [2]*Config {
 }
 
 
-func (config *Config)solve() {
+/**
+verifies that this configuration is valid at its current state
+ */
+func (config *Config) isValid() bool {
 
+
+	isValid := config.isPillarOk
+	if isValid {
+		 cell := config.matrix[config.currentRow][config.currentCol]
+		 element := cell.element
+
+		if element == Laser {
+			debug("TOO MANY LASERS at  :" + strconv.Itoa(cell.row) + " " + strconv.Itoa(cell.col) + " # " + strconv.Itoa(cell.adjacentLaser))
+			if cell.row == 8 && cell.col == 6 {
+
+				//os.Exit(0)
+			}
+			if cell.adjacentLaser > 0 {
+				isValid = false
+
+			}
+
+
+		}
+	}
+	return isValid
 }
 
+/**
+verifies that the current configuration is a solution
+*/
+func (config Config) isGoal() bool {
+
+	isGoal := false
+	r := 0
+	c := 0
+	for r < len(config.matrix) {
+		c = 0
+		for c < len(config.matrix[0]) {
+			cell := config.matrix[r][c]
+			element := cell.element
+			if element == (Laser) {
+				if cell.adjacentLaser > 0 {
+					isGoal = true
+					fmt.Printf("TOO MANY LASERS at %v %v", cell.row, cell.col)
+
+					break
+				}
+			} else if strings.Contains(string(Pillars), string(element)) {
+				if string(element) != "X" {
+					if cell.adjacentPillar != cell.pillarNumber {
+						debug(string(element) + " SUPPOSED TO BE " +  strconv.Itoa(cell.pillarNumber) + " " +  strconv.Itoa(cell.adjacentPillar))
+						isGoal = true
+						break
+					}
+				}
+			} else if element != Beam {
+				debug("CANT BE A DOT at " + strconv.Itoa(r) + " " +strconv.Itoa(c))
+				isGoal = true
+				break
+			}
+
+			c++
+		}
+		if isGoal {
+			break
+		}
+
+		r++
+	}
+	return !isGoal
+}
+
+func (config *Config) solve() *Config{
+	debug("current config")
+	//config.printMatrix()
+
+	if config.isGoal() {
+		solutionFound = true
+		debug("FOUND")
+		config.printMatrix()
+		return  config
+	}else{
+		for _,c := range config.getSuccessor(){
+
+			if c.isValid() {
+				debug("valid config")
+				///ssc.printMatrix()
+				stackCount++
+				sol := c.solve()
+				stackCount--
+
+				if solutionFound {
+					if stackCount == 0 {
+						solutionFound = false
+					}
+					return sol
+				}
+			}else{
+				debug("invalid config")
+				//c.printMatrix()
+			}
+		}
+	}
+	return nil
+}
+
+func (config *Config) getSolution(){
+	debug("SOLVING " + strconv.Itoa(config.currentCol))
+	start := time.Now()
+	s := config.solve()
+	stop := time.Now()
+
+	fmt.Printf("DURATION %v", stop.Sub(start))
+	s.printMatrix()
+	debug("SOL FOUND")
+}

@@ -27,7 +27,7 @@ type Cell struct {
 	adjacentLaser       int
 	adjacentPillar      int
 	failedVerification  bool
-	laserDependency     []Cell
+	laserDependency     int
 	laserDependencyList list.List
 	pillarNumber        int
 }
@@ -39,12 +39,27 @@ func NewCell(row int, col int, element CellType) *Cell {
 	cell.element = element
 	if strings.Contains(string(Pillars), string(element)) {
 		if string(element) != "X" {
-			n, _ := strconv.ParseInt(string(Pillars), 10, 16)
+			n, _ := strconv.ParseInt(string(cell.element), 10,64)
 			cell.pillarNumber = int(n)
+			debug(string(cell.element) + " PILLAR N " + strconv.Itoa(cell.pillarNumber))
 		} else {
 			cell.pillarNumber = -1
 		}
 	}
+	return cell
+}
+
+func (c *Cell) CopyCell() *Cell{
+	var cell  = new(Cell)
+
+	cell.row = c.row
+	cell.col = c.col
+	cell.element = c.element
+	cell.pillarNumber = c.pillarNumber
+	cell.adjacentLaser = c.adjacentLaser
+	cell.adjacentPillar = c.adjacentPillar
+	cell.laserDependency = c.laserDependency
+
 	return cell
 }
 
@@ -65,7 +80,7 @@ func (c *Cell) updateElement(e CellType) bool {
 		}
 	} else if e == FreeSpot {
 		if c.element == Laser {
-			if len(c.laserDependency) == 0 {
+			if c.laserDependency == 0 {
 				c.element = e
 			} else {
 				c.element = Beam
@@ -85,26 +100,25 @@ func (c *Cell) propagate(e CellType, laser *Cell, action int) bool {
 	// symbol to a bea
 	// when its a laser we just add the dependency and check the adjacent cells
 	// only a pillar can stop a laser's trajectory
-
+	//fmt.Printf("CELL TYPE %v\n" , string(e))
 	if action > 0 {
 
 		if c.element == FreeSpot || c.element == Beam {
 			c.element = e
-			c.laserDependency = append(c.laserDependency, *laser)
+			c.laserDependency++
 			r = true
 		} else if c.element == Laser {
-			laser.adjacentLaser = laser.adjacentLaser + 1
-			c.laserDependency = append(c.laserDependency, *laser)
-
-			debug("ADJ LASER at " + string(c.row) + " " + string(c.col) + " LASER: " + string(laser.row) + " " + string(laser.
-				col) + " #" + string(laser.adjacentLaser))
+			laser.adjacentLaser++
+			c.laserDependency++
+			debug("ADJ LASER at " +  strconv.Itoa(c.row) + " " +  strconv.Itoa(c.col) + " LASER: " +  strconv.Itoa(laser.row) + " " +  strconv.Itoa(laser.
+				col) + " #" +  strconv.Itoa(laser.adjacentLaser))
 			c.adjacentLaser++
 			r = true
-		} else if strings.Contains(string(Pillars), string(e)) {
+		} else if strings.Contains(string(Pillars), string(c.element)) {
 
 			lDistance := math.Abs(float64(c.row - laser.row))
 			hDistance := math.Abs(float64(c.col - laser.col))
-
+			///fmt.Printf("DISTANCE %v %v", lDistance,hDistance)
 			if lDistance == 1 || hDistance == 1 {
 				c.adjacentPillar++
 			}
@@ -113,16 +127,16 @@ func (c *Cell) propagate(e CellType, laser *Cell, action int) bool {
 	} else {
 		if c.element == Beam {
 
-			debug("SIZE OF LIST BEFORE REMOVING Dependency " + string(len(c.laserDependency)))
-			c.laserDependency = c.laserDependency[:len(c.laserDependency)-1]
-			debug("SIZE OF LIST AFTER REMOVING Dependency " + string(len(c.laserDependency)))
+			debug("SIZE OF LIST BEFORE REMOVING Dependency " + string(c.laserDependency))
+			c.laserDependency--
+			debug("SIZE OF LIST AFTER REMOVING Dependency " + string(c.laserDependency))
 
-			if len(c.laserDependency) == 0 {
+			if c.laserDependency == 0 {
 				c.element = FreeSpot
 			}
 			r = true
 		} else if c.element == Laser {
-			c.laserDependency = c.laserDependency[:len(c.laserDependency)-1]
+			c.laserDependency--
 			laser.adjacentLaser--
 			c.adjacentLaser--
 			r = true

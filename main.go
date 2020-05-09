@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const DEBUG bool = true
+const DEBUG bool = false
 var safeConfig *Config
 func main() {
 	safeConfig = NewConfig(os.Args[1])
@@ -67,6 +67,12 @@ func exec(commands []string) {
 		case "d":
 			safeConfig.printMatrix()
 			readInput()
+		case "s":
+			safeConfig.getSolution()
+		case "v":
+
+			debug("VERIFIED ? " + strconv.FormatBool(safeConfig.isGoal()))
+
 		case "q":
 			os.Exit(0)
 		}
